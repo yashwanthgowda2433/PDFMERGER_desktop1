@@ -64,18 +64,22 @@
         </div>
         <form id="pdfMergeForm">
             <div class="mb-3">
-                <label for="directory" class="form-label">Select Directory</label>
+                <label for="directory" class="form-label">Enter or Copy & Paste input files parent Directory</label>
                 <input type="text" class="form-control" id="directory" name="directory" placeholder="Enter the path to the directory">
             </div>
             <div class="mb-3">
-                <label for="outputFolder" class="form-label">Output Folder</label>
+                <label for="outputFolder" class="form-label">Enter or Copy & Paste Output files  Directory</label>
                 <input type="text" class="form-control" id="outputFolder" name="outputFolder" placeholder="Enter the output folder path">
+            </div>
+            <div class="mb-3">
+                <label for="pageOrientation" class="form-label">Space Between Two Images (eg: 5, 10, 15)</label>
+                <input class="form-control" id="space" name="space" type="number" value="5"/>
             </div>
             <div class="mb-3">
                 <label for="pageOrientation" class="form-label">Page Orientation</label>
                 <select class="form-select" id="pageOrientation" name="pageOrientation">
-                    <option value="P">Portrait</option>
                     <option value="L">Landscape</option>
+                    <option value="P">Portrait</option>
                 </select>
             </div>
             <div class="mb-3">
@@ -85,8 +89,11 @@
                     <option value="one_below_other">One Below Other</option>
                 </select>
             </div>
+            
             <!-- <button type="submit" class="btn btn-windows" data-bs-toggle="modal" data-bs-target="#progressModal">Merge PDFs</button> -->
-            <button type="submit" class="btn btn-windows" data-toggle="modal" data-target="#progressModal">Merge PDFs</button>
+            <button type="submit" class="btn btn-windows" name="action" data-toggle="modal" data-target="#progressModal" value="button1">Merge PDF's</button>
+            <button type="submit" class="btn btn-windows ml-3" name="action" data-toggle="modal" data-target="#progressModal" value="button2">Merge JPG's</button>
+
         </form>
     </div>
 </div>
@@ -134,13 +141,17 @@
         e.preventDefault();
 
         var formData = new FormData(this);
+
         var progressBar = document.getElementById('progressBar');
         var progressStatus = document.getElementById('progressStatus');
 
-        fetch('<?php echo base_url("PdfMerge/merge_pdfs"); ?>', {
+        const action = document.activeElement.value;
+        alert(action)
+        if (action === 'button1') {
+          fetch('<?php echo base_url("PdfMerge/merge_pdfs"); ?>', {
             method: 'POST',
             body: formData
-        }).then(response => {
+          }).then(response => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let data = '';
@@ -185,9 +196,64 @@
                 });
             }
             read();
-        }).catch(error => {
+          }).catch(error => {
             progressStatus.textContent = `Error: ${error.message}`;
-        });
+          });
+        } else if (action === 'button2') {
+          fetch('<?php echo base_url("PdfMerge/merge_images"); ?>', {
+            method: 'POST',
+            body: formData
+          }).then(response => {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let data = '';
+            let isCompleted = false;
+
+            function read() {
+                reader.read().then(({ done, value }) => {
+                    if (done) {
+                        // End of stream
+                        if (isCompleted) {
+                            progressBar.style.width = '100%';
+                            progressStatus.textContent = 'Successfully completed!';
+                        }
+                        return;
+                    }
+
+                    // Decode the chunk and append it to the data
+                    data += decoder.decode(value, { stream: true });
+
+                    // Split data into individual JSON objects and process each one
+                    let jsonObjects = data.split('\n').filter(line => line.trim() !== '');
+
+                    for (let json of jsonObjects) {
+                        try {
+                            let parsedData = JSON.parse(json);
+                            if (parsedData.status === 'processing') {
+                                progressBar.style.width = parsedData.progress + '%';
+                                progressBar.setAttribute('aria-valuenow', parsedData.progress);
+                                progressStatus.textContent = `Progress: ${parsedData.progress}%`;
+                            } else if (parsedData.status === 'completed') {
+                                isCompleted = true;
+                                progressStatus.textContent = 'Successfully completed!';
+                            } else {
+                                progressStatus.textContent = `Error: ${parsedData.message}`;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing JSON:', e);
+                        }
+                    }
+
+                    read();
+                });
+            }
+            read();
+          }).catch(error => {
+            progressStatus.textContent = `Error: ${error.message}`;
+          });
+        }
+        
+        
     });
 </script>
 
