@@ -76,14 +76,14 @@
                 <input class="form-control" id="space" name="space" type="number" value="5"/>
             </div>
             <div class="mb-3">
-                <label for="pageOrientation" class="form-label">Page Orientation</label>
+                <label for="pageOrientation" class="form-label">Page Orientation&nbsp;&nbsp;</label>
                 <select class="form-select" id="pageOrientation" name="pageOrientation">
                     <option value="L">Landscape</option>
                     <option value="P">Portrait</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label for="mergeOption" class="form-label">Merge Option</label>
+                <label for="mergeOption" class="form-label">Merge Option&nbsp;&nbsp;</label>
                 <select class="form-select" id="mergeOption" name="mergeOption">
                     <option value="side_by_side">Side by Side</option>
                     <option value="one_below_other">One Below Other</option>
