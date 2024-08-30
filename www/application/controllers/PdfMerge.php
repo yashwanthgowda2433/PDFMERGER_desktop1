@@ -125,7 +125,7 @@ class PdfMerge extends CI_Controller {
         
         
         if ($returnVar !== 0) {
-            throw new Exception("Error in preprocessing PDF: " . implode("\n", $output));
+            // throw new Exception("Error in preprocessing PDF: " . implode("\n", $output));
         }
 
         return $preprocessedFile;
@@ -202,12 +202,12 @@ class PdfMerge extends CI_Controller {
                         $pageCountNext = $pdf->setSourceFile($nextPdfFile);
             
                         if ($pageCountNext < 1) {
-                            throw new Exception("No pages found in the next PDF.");
+                            // throw new Exception("No pages found in the next PDF.");
                         }
             
                         $tplIdxNext = $pdf->importPage(1);
                         if (!$tplIdxNext) {
-                            throw new Exception("Failed to import page 1 from next PDF.");
+                            // throw new Exception("Failed to import page 1 from next PDF.");
                         }
                         // print_r("/n");
                         // print_r($tplIdxNext.', '.$halfPageWidth.', '.$spaceBetweenPages.', '.$y2.', '.$halfPageWidth.', '.$uniformHeight);die;
@@ -292,237 +292,6 @@ class PdfMerge extends CI_Controller {
         }
     }
 
-
-    
-
-
-    // public function merge_pdfs() {
-    //     $mainFolder = $this->input->post('directory');
-    //     $outputFolder = $this->input->post('outputFolder');
-    //     $pageOrientation = $this->input->post('pageOrientation');
-    //     $mergeOption = $this->input->post('mergeOption');
-    //     $space = $this->input->post('space');
-    
-    //     if (!is_dir($mainFolder)) {
-    //         echo json_encode(['status' => 'error', 'message' => 'Invalid directory']);
-    //         return;
-    //     }
-    
-    //     $subFolders = glob($mainFolder . '/*', GLOB_ONLYDIR);
-    //     $totalFiles = count($subFolders);
-    //     if ($totalFiles < 1) {
-    //         $subFolders = glob($mainFolder, GLOB_ONLYDIR);
-    //         $totalFiles = count($subFolders);
-    //     }
-    
-    //     $processed = 0;
-    
-    //     // Send initial response
-    //     header('Content-Type: application/json');
-    //     if (ob_get_level() === 0) {
-    //         ob_start();
-    //     }
-    //     echo json_encode(['status' => 'processing', 'progress' => 10]) . "\n";
-    //     ob_flush();
-    //     flush();
-    
-    //     foreach ($subFolders as $subFolder) {
-    //         $this->processFolder($subFolder, $outputFolder, $pageOrientation, $mergeOption, $space);
-    //         $processed++;
-    //         $percentage = round(($processed / $totalFiles) * 100);
-    //         echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
-    //         if (ob_get_level() > 0) {
-    //             ob_flush();
-    //         }
-    //         flush();
-    //     }
-    
-    //     // Send final completion message
-    //     echo json_encode(['status' => 'completed']) . "\n";
-    //     if (ob_get_level() > 0) {
-    //         ob_flush();
-    //     }
-    //     flush();
-    // }
-    
-    // private function preprocessPdf($pdfFile) {
-    //     $preprocessedFile = sys_get_temp_dir() . '/' . uniqid() . '_preprocessed.pdf';
-    //     $command = '"C:\Program Files\gs\gs10.03.1\bin\gswin64" -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=' . escapeshellarg($preprocessedFile) . ' ' . escapeshellarg($pdfFile);
-    
-    //     exec($command, $output, $returnVar);
-        
-    //     if ($returnVar !== 0) {
-    //         throw new Exception("Error in preprocessing PDF: " . implode("\n", $output));
-    //     }
-    
-    //     return $preprocessedFile;
-    // }
-    
-    // private function mergeSideBySide($pdfFile, $outputFile, $pageOrientation = 'L', $space) {
-    //     try {
-    //         $pdfFile = $this->preprocessPdf($pdfFile);
-    //         $pdf = new Fpdi();
-    //         $pageCount = $pdf->setSourceFile($pdfFile);
-    
-    //         if ($pageCount < 1) {
-    //             throw new Exception("No pages found in the PDF.");
-    //         }
-    
-    //         $pdf->AddPage($pageOrientation);
-    //         $spaceBetweenPages = $space;
-    
-    //         $maxWidth = 0;
-    //         $maxHeight = 0;
-    
-    //         for ($i = 1; $i <= $pageCount; $i++) {
-    //             $size = $pdf->getTemplateSize($pdf->importPage($i));
-    //             if ($size['width'] > $maxWidth) {
-    //                 $maxWidth = $size['width'];
-    //             }
-    //             if ($size['height'] > $maxHeight) {
-    //                 $maxHeight = $size['height'];
-    //             }
-    //         }
-    
-    //         $halfPageWidth = ($pdf->GetPageWidth() - $spaceBetweenPages) / 2;
-    //         $scaleFactor = $halfPageWidth / $maxWidth;
-    //         $uniformHeight = $maxHeight * $scaleFactor;
-    
-    //         for ($i = 1; $i <= $pageCount; $i += 2) {
-    //             $tplIdx1 = $pdf->importPage($i);
-    //             if (!$tplIdx1) {
-    //                 throw new Exception("Failed to import page $i from PDF.");
-    //             }
-    
-    //             $pdf->useTemplate($tplIdx1, 0, 0, $halfPageWidth, $uniformHeight);
-    
-    //             if ($i + 1 <= $pageCount) {
-    //                 $tplIdx2 = $pdf->importPage($i + 1);
-    //                 if (!$tplIdx2) {
-    //                     throw new Exception("Failed to import page " . ($i + 1) . " from PDF.");
-    //                 }
-    //                 $pdf->useTemplate($tplIdx2, $halfPageWidth + $spaceBetweenPages, 0, $halfPageWidth, $uniformHeight);
-    //             } else {
-    //                 $this->addPageFromNextPdf($pdf, $pdfFile, $pageOrientation, $space);
-    //             }
-    
-    //             if ($i + 1 < $pageCount) {
-    //                 $pdf->AddPage($pageOrientation);
-    //             }
-    //         }
-    
-    //         $pdf->Output($outputFile, 'F');
-    
-    //         if (file_exists($pdfFile)) {
-    //             unlink($pdfFile);
-    //         }
-    //     } catch (Exception $e) {
-    //         echo "Error merging PDF: " . $e->getMessage();
-    //     }
-    // }
-    
-    // private function mergeOneBelowOther($pdfFile, $outputFile, $pageOrientation) {
-    //     try {
-    //         $pdfFile = $this->preprocessPdf($pdfFile);
-    //         $pdf = new Fpdi();
-    //         $pageCount = $pdf->setSourceFile($pdfFile);
-    
-    //         if ($pageCount < 1) {
-    //             throw new Exception("No pages found in the PDF.");
-    //         }
-    
-    //         for ($i = 1; $i <= $pageCount; $i += 2) {
-    //             $pdf->AddPage($pageOrientation);
-    //             $tplIdx1 = $pdf->importPage($i);
-    //             if (!$tplIdx1) {
-    //                 throw new Exception("Failed to import page $i from PDF.");
-    //             }
-    //             $pdf->useTemplate($tplIdx1, 0, 0);
-    
-    //             if ($i + 1 <= $pageCount) {
-    //                 $tplIdx2 = $pdf->importPage($i + 1);
-    //                 if (!$tplIdx2) {
-    //                     throw new Exception("Failed to import page " . ($i + 1) . " from PDF.");
-    //                 }
-    //                 $pdf->AddPage($pageOrientation);
-    //                 $pdf->useTemplate($tplIdx2, 0, 0);
-    //             } else {
-    //                 $this->addPageFromNextPdf($pdf, $pdfFile, $pageOrientation, 0);
-    //             }
-    //         }
-    
-    //         $pdf->Output($outputFile, 'F');
-    //         unlink($pdfFile);
-    //     } catch (Exception $e) {
-    //         echo "Error merging PDF: " . $e->getMessage();
-    //     }
-    // }
-    
-    // private function addPageFromNextPdf($pdf, $currentPdfFile, $pageOrientation, $space) {
-    //     $directory = dirname($currentPdfFile);
-    //     $pdfFiles = glob($directory . '/*.pdf');
-        
-    //     // Sort files by name
-    //     usort($pdfFiles, function($a, $b) {
-    //         return strcmp(basename($a), basename($b));
-    //     });
-        
-    //     // Find the current file and get the next one in the list
-    //     $currentIndex = array_search($currentPdfFile, $pdfFiles);
-    //     if ($currentIndex === false || $currentIndex + 1 >= count($pdfFiles)) {
-    //         return; // No next file available
-    //     }
-        
-    //     $nextPdfFile = $pdfFiles[$currentIndex + 1];
-        
-    //     try {
-    //         $nextPdfFile = $this->preprocessPdf($nextPdfFile);
-    //         $pdfNext = new Fpdi();
-    //         $pageCountNext = $pdfNext->setSourceFile($nextPdfFile);
-            
-    //         if ($pageCountNext < 1) {
-    //             throw new Exception("No pages found in the next PDF.");
-    //         }
-            
-    //         $tplIdxNext = $pdfNext->importPage(1);
-    //         if (!$tplIdxNext) {
-    //             throw new Exception("Failed to import page 1 from next PDF.");
-    //         }
-    
-    //         // Add a new page to the current PDF for the next PDF's first page
-    //         $pdf->AddPage($pageOrientation);
-    //         if ($space > 0) {
-    //             $pdf->useTemplate($tplIdxNext, $pdf->GetPageWidth() / 2 + $space, 0, $pdf->GetPageWidth() / 2 - $space, $pdf->GetPageHeight());
-    //         } else {
-    //             $pdf->useTemplate($tplIdxNext, $pdf->GetPageWidth() / 2, 0, $pdf->GetPageWidth() / 2, $pdf->GetPageHeight());
-    //         }
-    
-    //         unlink($nextPdfFile); // Clean up temporary file
-    //     } catch (Exception $e) {
-    //         echo "Error merging PDF: " . $e->getMessage();
-    //     }
-    // }
-    
-    // private function processFolder($folderPath, $outputFolder, $pageOrientation, $mergeOption, $space) {
-    //     $lastDirName = basename(rtrim($folderPath, '/\\'));
-        
-    //     $outputDir = rtrim($outputFolder, '/') . '/' . $lastDirName;
-    //     if (!is_dir($outputDir)) {
-    //         mkdir($outputDir, 0755, true);
-    //     }
-    
-    //     $pdfFiles = glob($folderPath . '/*.pdf');
-    //     foreach ($pdfFiles as $pdfFile) {
-    //         $outputFile = $outputDir . '/' . basename($pdfFile, '.pdf') . '.pdf';
-    //         if ($mergeOption === 'side_by_side') {
-    //             $this->mergeSideBySide($pdfFile, $outputFile, $pageOrientation, $space);
-    //         } else {
-    //             $this->mergeOneBelowOther($pdfFile, $outputFile, $pageOrientation);
-    //         }
-    //     }
-    // }
-        
-    
 
 
 
