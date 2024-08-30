@@ -1,5 +1,6 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
+ini_set('memory_limit', '1024M');
 
 use setasign\Fpdi\Fpdi;
 use setasign\Fpdi\PdfReader\StreamReader;
@@ -282,7 +283,7 @@ class PdfMerge extends CI_Controller {
             // Save the merged PDF inside the $lastDirName folder
             // $outputFilePath = $outputDir . '/' . basename($outputFile);
 
-            $outputFile = $outputDir . '/' . basename($pdfFile, '.pdf') . '_merged.pdf';
+            $outputFile = $outputDir . '/' . basename($pdfFile, '.pdf') . '.pdf';
             if ($mergeOption === 'side_by_side') {
                 $this->mergeSideBySide($pdfFile, $outputFile, $pageOrientation, $space);
             } else {
@@ -512,7 +513,7 @@ class PdfMerge extends CI_Controller {
     
     //     $pdfFiles = glob($folderPath . '/*.pdf');
     //     foreach ($pdfFiles as $pdfFile) {
-    //         $outputFile = $outputDir . '/' . basename($pdfFile, '.pdf') . '_merged.pdf';
+    //         $outputFile = $outputDir . '/' . basename($pdfFile, '.pdf') . '.pdf';
     //         if ($mergeOption === 'side_by_side') {
     //             $this->mergeSideBySide($pdfFile, $outputFile, $pageOrientation, $space);
     //         } else {
@@ -705,7 +706,7 @@ class PdfMerge extends CI_Controller {
             $image1 = $imageFiles[$i];
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
     
-            $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '_merged.jpg';
+            $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
             if ($mergeOption === 'side_by_side') {
                 $this->mergeSideBySideImages($image1, $image2, $outputFile, $space);
             } else {
@@ -788,7 +789,7 @@ class PdfMerge extends CI_Controller {
             $image1 = $imageFiles[$i];
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
     
-            $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '_merged.jpg';
+            $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
             if ($mergeOption === 'side_by_side') {
                 $this->mergeSideBySideImages($image1, $image2, $outputFile, $space);
             } else {
@@ -797,7 +798,7 @@ class PdfMerge extends CI_Controller {
             $mergedImages[] = $outputFile;
         }
         // After merging images, convert them to a PDF
-        $this->convertImagesToPdf($mergedImages, $outputDir . '/' . $lastDirName . '_merged.pdf');
+        $this->convertImagesToPdf($mergedImages, $outputDir . '/' . $lastDirName . '.pdf');
     }
 
     private function convertImagesToPdf($imageFiles, $outputPdfPath) {
