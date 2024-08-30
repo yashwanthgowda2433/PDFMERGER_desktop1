@@ -470,7 +470,7 @@ class PdfMerge extends CI_Controller {
     
         $imageFiles = glob($folderPath . '/*.{jpg,jpeg}', GLOB_BRACE);
         $totalFiles = count($imageFiles);
-    
+        $processed = 0;
         for ($i = 0; $i < $totalFiles; $i += 2) {
             $image1 = $imageFiles[$i];
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
@@ -481,6 +481,14 @@ class PdfMerge extends CI_Controller {
             } else {
                 $this->mergeOneBelowOtherImages($image1, $image2, $outputFile, $space);
             }
+
+            $percentage = round(($processed / $totalFiles) * 100);
+            $processed++;
+            echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
         }
     }
     
