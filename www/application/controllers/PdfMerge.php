@@ -43,6 +43,26 @@ class PdfMerge extends CI_Controller {
         }
     }
 
+    public function install_magick() {
+        // Path to the uploaded installer file
+        // $installerPath = 'pdftk_free-2.02-win-setup.exe';
+        // Full path to the installer file based on your setup
+        $installerPath = 'ImageMagick-7.1.1-38-Q16-HDRI-x64-static.exe';
+
+        // Command to install PDFtk directly
+        $installCommand = "\"$installerPath\" /S";
+
+        // Execute the command
+        $output = shell_exec($installCommand);
+
+        // Check if the installation was successful
+        if ($output === null) {
+            // echo "imagic installed successfully.";
+            return true;
+        } else {
+            return false;
+        }
+    }
     public function index() {
         $pdftkPath = '"C:\Program Files\gs\gs10.03.1\bin\"';
         $command = "if not exist $pdftkPath echo not exists!";
@@ -53,6 +73,20 @@ class PdfMerge extends CI_Controller {
         if ($output != "") {
             // PDFtk is not installed, so install it
             $this->install_pdftk();
+        
+        } else {
+            // echo "PDFtk is already installed at: " . $output;
+        }
+
+        $magickPath = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI"';
+        $command2 = "if not exist $magickPath echo not exists!";
+        $output2 = shell_exec($command2);
+
+        // print_r(strpos($output, 'not exists!'));
+        // print_r($output != "");die;
+        if ($output2 != "") {
+            // PDFtk is not installed, so install it
+            $this->install_magick();
         
         } else {
             // echo "PDFtk is already installed at: " . $output;
@@ -423,6 +457,70 @@ class PdfMerge extends CI_Controller {
     //     imagedestroy($merged_image);
     // }
 
+    // private function mergeSideBySideImages($image1Path, $image2Path, $outputFile, $space) {
+    //     // Load the first image
+    //     $image1 = imagecreatefromjpeg($image1Path);
+    //     $width1 = imagesx($image1);
+    //     $height1 = imagesy($image1);
+    
+    //     // Load the second image if it exists
+    //     if ($image2Path) {
+    //         $image2 = imagecreatefromjpeg($image2Path);
+    //         $width2 = imagesx($image2);
+    //         $height2 = imagesy($image2);
+    //     } else {
+    //         $image2 = null;
+    //         $width2 = 0;
+    //         $height2 = 0;
+    //     }
+    
+    //     // A3 landscape dimensions (420mm x 297mm in pixels, assuming 300 DPI)
+    //     $a3_width = 4961; // 420mm * 300 DPI
+    //     $a3_height = 3508; // 297mm * 300 DPI
+    
+    //     // Calculate the target width for each image to take 50% of the total width minus the space
+    //     $targetWidth = ($a3_width - $space) / 2;
+    
+    //     // Calculate the scale factors to resize images to the target width
+    //     $scale1 = $targetWidth / $width1;
+    //     $scale2 = $targetWidth / $width2;
+    
+    //     // Calculate the new heights based on the scale factors
+    //     $newHeight1 = $height1 * $scale1;
+    //     $newHeight2 = $height2 * $scale2;
+    
+    //     // Create a new image with A3 dimensions
+    //     $merged_image = imagecreatetruecolor($a3_width, $a3_height);
+    
+    //     // Fill the background with white color
+    //     $white = imagecolorallocate($merged_image, 255, 255, 255);
+    //     imagefill($merged_image, 0, 0, $white);
+    
+    //     // Calculate the vertical positions to center the images on the A3 page
+    //     $y1 = ($a3_height - $newHeight1) / 2;
+    //     $y2 = ($a3_height - $newHeight2) / 2;
+    
+    //     // Resize and copy the first image to the left side
+    //     $resizedImage1 = imagescale($image1, $targetWidth, $newHeight1);
+    //     imagecopy($merged_image, $resizedImage1, 0, $y1, 0, 0, $targetWidth, $newHeight1);
+    //     imagedestroy($resizedImage1);
+    
+    //     // Resize and copy the second image to the right side, if it exists
+    //     if ($image2) {
+    //         $resizedImage2 = imagescale($image2, $targetWidth, $newHeight2);
+    //         imagecopy($merged_image, $resizedImage2, $targetWidth + $space, $y2, 0, 0, $targetWidth, $newHeight2);
+    //         imagedestroy($resizedImage2);
+    //         imagedestroy($image2); // Free memory for the second image
+    //     }
+    
+    //     // Save the merged image
+    //     imagejpeg($merged_image, $outputFile);
+    
+    //     // Free memory
+    //     imagedestroy($image1);
+    //     imagedestroy($merged_image);
+    // }
+    
     private function mergeSideBySideImages($image1Path, $image2Path, $outputFile, $space) {
         // Load the first image
         $image1 = imagecreatefromjpeg($image1Path);
@@ -445,11 +543,11 @@ class PdfMerge extends CI_Controller {
         $a3_height = 3508; // 297mm * 300 DPI
     
         // Calculate the target width for each image to take 50% of the total width minus the space
-        $targetWidth = ($a3_width - $space) / 2;
+        $targetWidth = ($a3_width - $space - 2 * 10) / 2; // Subtract 10px space on each side
     
         // Calculate the scale factors to resize images to the target width
-        $scale1 = $targetWidth / $width1;
-        $scale2 = $targetWidth / $width2;
+        $scale1 = $width1==0?0:$targetWidth / $width1;
+        $scale2 = $width2==0?0:$targetWidth / $width2;
     
         // Calculate the new heights based on the scale factors
         $newHeight1 = $height1 * $scale1;
@@ -468,13 +566,13 @@ class PdfMerge extends CI_Controller {
     
         // Resize and copy the first image to the left side
         $resizedImage1 = imagescale($image1, $targetWidth, $newHeight1);
-        imagecopy($merged_image, $resizedImage1, 0, $y1, 0, 0, $targetWidth, $newHeight1);
+        imagecopy($merged_image, $resizedImage1, 30, $y1, 0, 0, $targetWidth, $newHeight1);
         imagedestroy($resizedImage1);
     
         // Resize and copy the second image to the right side, if it exists
         if ($image2) {
             $resizedImage2 = imagescale($image2, $targetWidth, $newHeight2);
-            imagecopy($merged_image, $resizedImage2, $targetWidth + $space, $y2, 0, 0, $targetWidth, $newHeight2);
+            imagecopy($merged_image, $resizedImage2, $targetWidth + 40 + $space, $y2, 0, 0, $targetWidth-50, $newHeight2);
             imagedestroy($resizedImage2);
             imagedestroy($image2); // Free memory for the second image
         }
@@ -485,7 +583,19 @@ class PdfMerge extends CI_Controller {
         // Free memory
         imagedestroy($image1);
         imagedestroy($merged_image);
+
+        $newDpi = 300;
+        // // Update DPI using ImageMagick command
+        $command = "magick $outputFile -units PixelsPerInch -density {$newDpi}x{$newDpi} $outputFile";
+        exec($command, $output, $return_var);
+    
+        // if ($return_var === 0) {
+        //     echo "Image DPI updated successfully!";
+        // } else {
+        //     echo "Error updating image DPI.";
+        // }
     }
+    
     
     
     
