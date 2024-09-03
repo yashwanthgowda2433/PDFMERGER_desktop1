@@ -358,6 +358,71 @@ class PdfMerge extends CI_Controller {
         flush();
     }
     
+    // private function mergeSideBySideImages($image1Path, $image2Path, $outputFile, $space) {
+    //     // Load the first image
+    //     $image1 = imagecreatefromjpeg($image1Path);
+    //     $width1 = imagesx($image1);
+    //     $height1 = imagesy($image1);
+    
+    //     // Load the second image if it exists
+    //     if ($image2Path) {
+    //         $image2 = imagecreatefromjpeg($image2Path);
+    //         $width2 = imagesx($image2);
+    //         $height2 = imagesy($image2);
+    //     } else {
+    //         $image2 = null;
+    //         $width2 = 0;
+    //         $height2 = 0;
+    //     }
+    
+    //     // Set the space between images
+    //     $spaceBetweenImages = $space*2;
+    
+    //     // Calculate the equal width for both images
+    //     $totalWidth = $width1 + $width2 + $spaceBetweenImages;
+    //     $equalWidth = ($totalWidth - $spaceBetweenImages) / 2;
+    
+    //     // Calculate the scale factor to make both images equal in width
+    //     $scale1 = $equalWidth / $width1;
+    //     $scale2 = $equalWidth / $width2;
+    
+    //     // Calculate the new heights based on the scale factor
+    //     $newHeight1 = $height1 * $scale1;
+    //     $newHeight2 = $height2 * $scale2;
+    
+    //     // Create a new image with the combined width and max height
+    //     $merged_height = max($newHeight1, $newHeight2);
+    //     $merged_image = imagecreatetruecolor($equalWidth * 2 + $spaceBetweenImages, $merged_height);
+    
+    //     // Fill the background with white color (optional)
+    //     $white = imagecolorallocate($merged_image, 255, 255, 255);
+    //     imagefill($merged_image, 0, 0, $white);
+    
+    //     // Calculate the vertical positions to center the images if necessary
+    //     $y1 = ($merged_height - $newHeight1) / 2;
+    //     $y2 = ($merged_height - $newHeight2) / 2;
+    
+    //     // Resize and copy the first image to the left side
+    //     $resizedImage1 = imagescale($image1, $equalWidth, $newHeight1);
+    //     imagecopy($merged_image, $resizedImage1, 0, $y1, 0, 0, $equalWidth, $newHeight1);
+    //     imagedestroy($resizedImage1);
+    
+    //     // Resize and copy the second image to the right side, if it exists
+    //     if ($image2) {
+    //         $resizedImage2 = imagescale($image2, $equalWidth, $newHeight2);
+    //         imagecopy($merged_image, $resizedImage2, $equalWidth + $spaceBetweenImages, $y2, 0, 0, $equalWidth, $newHeight2);
+    //         imagedestroy($resizedImage2);
+    //         imagedestroy($image2); // Free memory for the second image
+    //     }
+    
+    //     // Save the merged image
+    //     imagejpeg($merged_image, $outputFile);
+    
+    //     // Free memory
+    //     imagedestroy($image1);
+    //     imagedestroy($merged_image);
+    // }
+
     private function mergeSideBySideImages($image1Path, $image2Path, $outputFile, $space) {
         // Load the first image
         $image1 = imagecreatefromjpeg($image1Path);
@@ -375,42 +440,41 @@ class PdfMerge extends CI_Controller {
             $height2 = 0;
         }
     
-        // Set the space between images
-        $spaceBetweenImages = $space*2;
+        // A3 landscape dimensions (420mm x 297mm in pixels, assuming 300 DPI)
+        $a3_width = 4961; // 420mm * 300 DPI
+        $a3_height = 3508; // 297mm * 300 DPI
     
-        // Calculate the equal width for both images
-        $totalWidth = $width1 + $width2 + $spaceBetweenImages;
-        $equalWidth = ($totalWidth - $spaceBetweenImages) / 2;
+        // Calculate the target width for each image to take 50% of the total width minus the space
+        $targetWidth = ($a3_width - $space) / 2;
     
-        // Calculate the scale factor to make both images equal in width
-        $scale1 = $equalWidth / $width1;
-        $scale2 = $equalWidth / $width2;
+        // Calculate the scale factors to resize images to the target width
+        $scale1 = $targetWidth / $width1;
+        $scale2 = $targetWidth / $width2;
     
-        // Calculate the new heights based on the scale factor
+        // Calculate the new heights based on the scale factors
         $newHeight1 = $height1 * $scale1;
         $newHeight2 = $height2 * $scale2;
     
-        // Create a new image with the combined width and max height
-        $merged_height = max($newHeight1, $newHeight2);
-        $merged_image = imagecreatetruecolor($equalWidth * 2 + $spaceBetweenImages, $merged_height);
+        // Create a new image with A3 dimensions
+        $merged_image = imagecreatetruecolor($a3_width, $a3_height);
     
-        // Fill the background with white color (optional)
+        // Fill the background with white color
         $white = imagecolorallocate($merged_image, 255, 255, 255);
         imagefill($merged_image, 0, 0, $white);
     
-        // Calculate the vertical positions to center the images if necessary
-        $y1 = ($merged_height - $newHeight1) / 2;
-        $y2 = ($merged_height - $newHeight2) / 2;
+        // Calculate the vertical positions to center the images on the A3 page
+        $y1 = ($a3_height - $newHeight1) / 2;
+        $y2 = ($a3_height - $newHeight2) / 2;
     
         // Resize and copy the first image to the left side
-        $resizedImage1 = imagescale($image1, $equalWidth, $newHeight1);
-        imagecopy($merged_image, $resizedImage1, 0, $y1, 0, 0, $equalWidth, $newHeight1);
+        $resizedImage1 = imagescale($image1, $targetWidth, $newHeight1);
+        imagecopy($merged_image, $resizedImage1, 0, $y1, 0, 0, $targetWidth, $newHeight1);
         imagedestroy($resizedImage1);
     
         // Resize and copy the second image to the right side, if it exists
         if ($image2) {
-            $resizedImage2 = imagescale($image2, $equalWidth, $newHeight2);
-            imagecopy($merged_image, $resizedImage2, $equalWidth + $spaceBetweenImages, $y2, 0, 0, $equalWidth, $newHeight2);
+            $resizedImage2 = imagescale($image2, $targetWidth, $newHeight2);
+            imagecopy($merged_image, $resizedImage2, $targetWidth + $space, $y2, 0, 0, $targetWidth, $newHeight2);
             imagedestroy($resizedImage2);
             imagedestroy($image2); // Free memory for the second image
         }
@@ -422,6 +486,8 @@ class PdfMerge extends CI_Controller {
         imagedestroy($image1);
         imagedestroy($merged_image);
     }
+    
+    
     
     private function mergeOneBelowOtherImages($imageFile, $outputFile, $space) {
         $images = glob($imageFile . '/*.jpg');
