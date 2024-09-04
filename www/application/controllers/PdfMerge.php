@@ -588,6 +588,8 @@ class PdfMerge extends CI_Controller {
         // // Update DPI using ImageMagick command
         $command = "magick $outputFile -units PixelsPerInch -density {$newDpi}x{$newDpi} $outputFile";
         exec($command, $output, $return_var);
+
+        // echo $return_var;die;
     
         // if ($return_var === 0) {
         //     echo "Image DPI updated successfully!";
