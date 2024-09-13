@@ -63,6 +63,29 @@ class PdfMerge extends CI_Controller {
             return false;
         }
     }
+
+    public function install_tesseract() {
+        // Path to the uploaded installer file
+        // $installerPath = 'pdftk_free-2.02-win-setup.exe';
+        // Full path to the installer file based on your setup
+        $installerPath = 'tesseract-ocr-w64-setup-5.4.0.20240606.exe';
+
+        // Command to install PDFtk directly
+        $installCommand = "\"$installerPath\" /S";
+
+        // Execute the command
+        $output = shell_exec($installCommand);
+        // print_r($installCommand);die;
+
+        // Check if the installation was successful
+        if ($output === null) {
+            // echo "imagic installed successfully.";
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public function index() {
         $pdftkPath = '"C:\Program Files\gs\gs10.03.1\bin\"';
         $command = "if not exist $pdftkPath echo not exists!";
@@ -87,6 +110,20 @@ class PdfMerge extends CI_Controller {
         if ($output2 != "") {
             // PDFtk is not installed, so install it
             $this->install_magick();
+        
+        } else {
+            // echo "PDFtk is already installed at: " . $output;
+        }
+
+        $tesseract = '"C:\Program Files\Tesseract-OCR"';
+        $command3 = "if not exist $tesseract echo not exists!";
+        $output3 = shell_exec($command3);
+
+        // print_r(strpos($output, 'not exists!'));
+        // print_r($output != "");die;
+        if ($output3 != "") {
+            // PDFtk is not installed, so install it
+            $this->install_tesseract();
         
         } else {
             // echo "PDFtk is already installed at: " . $output;
@@ -843,6 +880,178 @@ class PdfMerge extends CI_Controller {
         $pdf->Output($outputPdfPath, 'F');
     }
     // Images to PDFS End
+
+    // PDFS start
+    public function ocr_pdfs() {
+        $mainFolder = $this->input->post('directory');
+        $outputFolder = $this->input->post('outputFolder');
+        $pageOrientation = $this->input->post('pageOrientation');
+        $mergeOption = $this->input->post('mergeOption');
+        $space = $this->input->post('space');
+
+        if (!is_dir($mainFolder)) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid directory']);
+            return;
+        }
+
+        $subFolders = glob($mainFolder . '/*', GLOB_ONLYDIR);
+        $totalFiles = count($subFolders);
+        if($totalFiles<1){
+            $subFolders = glob($mainFolder, GLOB_ONLYDIR);
+            $totalFiles = count($subFolders);
+
+        }
+        $processed = 0;
+
+        // Send initial response
+        header('Content-Type: application/json');
+        if (ob_get_level() === 0) {
+            ob_start();
+        }
+        echo json_encode(['status' => 'processing', 'progress' => 10]) . "\n";
+        ob_flush();
+        flush();
+
+        foreach ($subFolders as $subFolder) {
+            $this->processPDFOCRFolder($subFolder, $outputFolder, $pageOrientation, $mergeOption, $space);
+            $processed++;
+            $percentage = round(($processed / $totalFiles) * 100);
+            // echo json_encode(['status' => 'processing', 'progress' => $percentage]);
+            // flush();
+            // ob_flush();
+
+            echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
+        }
+
+        // Send final completion message
+        echo json_encode(['status' => 'completed']) . "\n";
+        if (ob_get_level() > 0) {
+            ob_flush();
+        }
+        flush();
+    }
+
+    
+    private function applyOcr($pdfFile, $outputFile) {
+        try {
+            // Convert PDF to images (PNG)
+            $imageDir = sys_get_temp_dir() . '/' . uniqid('pdf_images_');
+            mkdir($imageDir, 0755, true);
+    
+            // Use Ghostscript to convert each page to an image (300 dpi for better OCR results)
+            // $command = '"C:\Program Files\gs\gs10.03.1\bin\gswin64c.exe" -sDEVICE=jpeg -o ' . escapeshellarg($imageDir . '/page_%d.jpg') . ' -r300 ' . escapeshellarg($pdfFile);
+
+            $command = '"C:\Program Files\gs\gs10.03.1\bin\gswin64c.exe" -sDEVICE=jpeg -o "' . $imageDir . '/page_%d.jpg" -r300 ' . escapeshellarg($pdfFile);
+            exec($command, $output, $returnVar);
+
+            if ($returnVar !== 0) {
+                throw new Exception("Error converting PDF to images: " . implode("\n", $output));
+            }
+
+            // print_r($imageDir);die;
+    
+            // Process each image with Tesseract and generate individual OCR PDFs
+            $images = glob($imageDir . '/*.jpg');
+
+            // Sort images in natural order (ascending)
+            usort($images, 'strnatcmp');
+            $tempOcrPdfs = [];
+    
+           
+            foreach ($images as $index => $image) {
+                $tempOcrPdf = sys_get_temp_dir() . '/' . uniqid() . '_ocr_page_' . ($index + 1) . '.pdf';
+                $command = '"C:\Program Files\Tesseract-OCR\tesseract.exe" ' . escapeshellarg($image) . ' ' . escapeshellarg($tempOcrPdf) . ' pdf';
+                exec($command, $output, $returnVar);
+    
+                if ($returnVar !== 0) {
+                    throw new Exception("Error applying OCR to image: " . implode("\n", $output));
+                }
+    
+                $tempOcrPdfs[] = $tempOcrPdf . '.pdf'; // Tesseract appends `.pdf` by default
+            }
+    
+            // Merge individual OCR PDFs into one final PDF
+            $this->mergeOcrPdfs($tempOcrPdfs, $outputFile);
+    
+            // Clean up image files and temporary PDFs
+            foreach ($images as $image) {
+                unlink($image);
+            }
+            rmdir($imageDir);
+    
+            foreach ($tempOcrPdfs as $tempPdf) {
+                unlink($tempPdf);
+            }
+    
+        } catch (Exception $e) {
+            echo "Error applying OCR: " . $e->getMessage();
+        }
+    }
+    
+    // Helper function to merge multiple PDFs into one
+    private function mergeOcrPdfs($pdfFiles, $outputFile) {
+        $pdf = new Fpdi();
+    
+        foreach ($pdfFiles as $pdfFile) {
+            $pageCount = $pdf->setSourceFile($pdfFile);
+    
+            for ($i = 1; $i <= $pageCount; $i++) {
+                // Add a new page with the default orientation (adjust if needed)
+                $pdf->AddPage();
+    
+                // Import the current page as a template
+                $template = $pdf->importPage($i);
+                $size = $pdf->getTemplateSize($template);
+    
+                // Get page dimensions
+                $pageWidth = $pdf->GetPageWidth();
+                $pageHeight = $pdf->GetPageHeight();
+    
+                // Calculate scaling factors to maintain aspect ratio
+                $scaleFactor = min($pageWidth / $size['width'], $pageHeight / $size['height']);
+    
+                // Center the image on the page
+                $x = ($pageWidth - ($size['width'] * $scaleFactor)) / 2;
+                $y = ($pageHeight - ($size['height'] * $scaleFactor)) / 2;
+    
+                // Use the template, scaling and positioning it
+                $pdf->useTemplate($template, $x, $y, $size['width'] * $scaleFactor, $size['height'] * $scaleFactor);
+            }
+        }
+    
+        // Save the merged PDF
+        $pdf->Output($outputFile, 'F');
+    }
+    
+    
+
+    private function processPDFOCRFolder($folderPath, $outputFolder, $pageOrientation, $mergeOption, $space) {
+        $lastDirName = basename(rtrim($folderPath, '/\\'));
+         
+        // Check if the $lastDirName folder exists inside the $outputFile folder
+        $outputDir = rtrim($outputFolder, '/') . '/' . $lastDirName;
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
+
+        $pdfFiles = glob($folderPath . '/*.pdf');
+        foreach ($pdfFiles as $pdfFile) {
+
+           
+
+            // Save the merged PDF inside the $lastDirName folder
+            // $outputFilePath = $outputDir . '/' . basename($outputFile);
+
+            $outputFile = $outputDir . '/' . basename($pdfFile, '.pdf') . '.pdf';
+            
+            $this->applyOcr($pdfFile, $outputFile);
+            
+        }
+    }
    
 }
 
