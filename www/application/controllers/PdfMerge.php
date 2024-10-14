@@ -635,7 +635,7 @@ class PdfMerge extends CI_Controller {
     //     // }
     // }
     
-    private function mergeSideBySideImages($image1Path, $image2Path, $outputFile, $space) {
+    private function mergeSideBySideImages($image1Path, $image2Path, $outputFile, $space, $tmp_image_path) {
         // Load the first image
         $image1 = imagecreatefromjpeg($image1Path);
         $width1 = imagesx($image1);
@@ -691,8 +691,9 @@ class PdfMerge extends CI_Controller {
             imagedestroy($image2); // Free memory for the second image
         }
     
+        
         // Save the merged image
-        imagejpeg($merged_image, $outputFile);
+        imagejpeg($merged_image, $tmp_image_path);
     
         // Free memory
         imagedestroy($image1);
@@ -700,8 +701,12 @@ class PdfMerge extends CI_Controller {
     
         // Update DPI using ImageMagick command
         $newDpi = 300;
-        $command = "magick $outputFile -units PixelsPerInch -density {$newDpi}x{$newDpi} $outputFile";
+        $command = `magick "$tmp_image_path" -units PixelsPerInch -density {$newDpi}x{$newDpi} "$outputFile"`;
         exec($command, $output, $return_var);
+
+        // print_r($command);die;
+
+        unlink($tmp_image_path);
     
         if ($return_var === 0) {
             echo "Image DPI updated successfully!";
@@ -766,8 +771,13 @@ class PdfMerge extends CI_Controller {
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
     
             $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
+            
+            $imageDir = sys_get_temp_dir() . '/' . uniqid('image_');
+            mkdir($imageDir, 0755, true);
+
+            $tmp_image_path = $imageDir. '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
             if ($mergeOption === 'side_by_side') {
-                $this->mergeSideBySideImages($image1, $image2, $outputFile, $space);
+                $this->mergeSideBySideImages($image1, $image2, $outputFile, $space, $tmp_image_path);
             } else {
                 $this->mergeOneBelowOtherImages($image1, $image2, $outputFile, $space);
             }
@@ -857,8 +867,14 @@ class PdfMerge extends CI_Controller {
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
     
             $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
+
+            $imageDir = sys_get_temp_dir() . '/' . uniqid('image_');
+            mkdir($imageDir, 0755, true);
+
+            $tmp_image_path = $imageDir. '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
+
             if ($mergeOption === 'side_by_side') {
-                $this->mergeSideBySideImages($image1, $image2, $outputFile, $space);
+                $this->mergeSideBySideImages($image1, $image2, $outputFile, $space, $tmp_image_path);
             } else {
                 $this->mergeOneBelowOtherImages($image1, $image2, $outputFile, $space);
             }
