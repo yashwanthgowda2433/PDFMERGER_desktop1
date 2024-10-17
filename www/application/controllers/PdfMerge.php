@@ -1,6 +1,6 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
-ini_set('memory_limit', '8192M');
+ini_set('memory_limit', '4096M');
 
 use setasign\Fpdi\Fpdi;
 use setasign\Fpdi\PdfReader\StreamReader;
