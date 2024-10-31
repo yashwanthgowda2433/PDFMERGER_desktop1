@@ -735,12 +735,13 @@ class PdfMerge extends CI_Controller {
         $imageFiles = glob($folderPath . '/*.{jpg,jpeg}', GLOB_BRACE);
         $totalFiles = count($imageFiles);
         $processed = 0;
+        $files_count = 1;
         for ($i = 0; $i < $totalFiles; $i += 2) {
             $image1 = $imageFiles[$i];
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
     
             // $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
-            $outputFile = $outputDir . '/' . $lastDirName.'-'.$processed . '.jpg';
+            $outputFile = $outputDir . '/' . $lastDirName.'-'.$files_count . '.jpg';
 
             
             $imageDir = sys_get_temp_dir() . '/' . uniqid('image_');
@@ -755,6 +756,7 @@ class PdfMerge extends CI_Controller {
 
             $percentage = round(($processed / $totalFiles) * 100);
             $processed++;
+            $files_count++;
             echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
             if (ob_get_level() > 0) {
                 ob_flush();
