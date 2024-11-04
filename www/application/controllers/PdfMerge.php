@@ -1163,6 +1163,75 @@ private function processImagesOCRFolder($folderPath, $outputFolder, $pageOrienta
     $this->applyOcrImages($folderPath, $outputFile);
 }
 
+// pdf to images
+public function extract_images_from_pdfs() {
+    $mainFolder = $this->input->post('directory');
+    $outputFolder = $this->input->post('outputFolder');
+
+    if (!is_dir($mainFolder)) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid directory']);
+        return;
+    }
+
+    $pdfFiles = glob($mainFolder . '/*.pdf');
+    if (count($pdfFiles) < 1) {
+        echo json_encode(['status' => 'error', 'message' => 'No PDF files found in the specified directory']);
+        return;
+    }
+
+    $processed = 0;
+    $totalFiles = count($pdfFiles);
+
+    // Send initial response
+    header('Content-Type: application/json');
+    if (ob_get_level() === 0) {
+        ob_start();
+    }
+    echo json_encode(['status' => 'processing', 'progress' => 10]) . "\n";
+    ob_flush();
+    flush();
+
+    foreach ($pdfFiles as $pdfFile) {
+        $pdfName = pathinfo($pdfFile, PATHINFO_FILENAME);
+        $pdfOutputDir = $outputFolder . '/' . $pdfName;
+
+        // Create a folder named after the PDF file
+        if (!is_dir($pdfOutputDir)) {
+            mkdir($pdfOutputDir, 0755, true);
+        }
+
+        // Extract images from the PDF and save them in the created folder
+        $this->extractImagesWithImageMagick($pdfFile, $pdfOutputDir);
+
+        $processed++;
+        $percentage = round(($processed / $totalFiles) * 100);
+        echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
+        if (ob_get_level() > 0) {
+            ob_flush();
+        }
+        flush();
+    }
+
+    // Send final completion message
+    echo json_encode(['status' => 'completed']) . "\n";
+    if (ob_get_level() > 0) {
+        ob_flush();
+    }
+    flush();
+}
+
+private function extractImagesWithImageMagick($pdfFile, $outputDir) {
+    // Command to extract images from each PDF page using ImageMagick's `magick` tool
+    // Each page is saved as a separate image in the specified directory
+    $command = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick" convert -density 300 ' . escapeshellarg($pdfFile) . ' ' . escapeshellarg($outputDir . '/image-%03d.jpg');
+
+    exec($command, $output, $returnVar);
+    if ($returnVar !== 0) {
+        echo "Error extracting images: " . implode("\n", $output);
+    }
+}
+
+
    
 }
 
