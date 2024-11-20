@@ -1164,9 +1164,12 @@ private function processImagesOCRFolder($folderPath, $outputFolder, $pageOrienta
 }
 
 // pdf to images
+
 public function extract_images_from_pdfs() {
     $mainFolder = $this->input->post('directory');
     $outputFolder = $this->input->post('outputFolder');
+    $custom_name = $this->input->post('custom_name');
+
 
     if (!is_dir($mainFolder)) {
         echo json_encode(['status' => 'error', 'message' => 'Invalid directory']);
@@ -1181,6 +1184,7 @@ public function extract_images_from_pdfs() {
 
     $processed = 0;
     $totalFiles = count($pdfFiles);
+    $imageCounter = 0; // Counter to keep track of image numbers
 
     // Send initial response
     header('Content-Type: application/json');
@@ -1193,15 +1197,19 @@ public function extract_images_from_pdfs() {
 
     foreach ($pdfFiles as $pdfFile) {
         $pdfName = pathinfo($pdfFile, PATHINFO_FILENAME);
-        $pdfOutputDir = $outputFolder . '/' . $pdfName;
 
-        // Create a folder named after the PDF file
+        if($custom_name){
+            $pdfName = $custom_name;
+        }
+        $pdfOutputDir = $outputFolder;
+
+        // Create a folder for output if it doesn't exist
         if (!is_dir($pdfOutputDir)) {
             mkdir($pdfOutputDir, 0755, true);
         }
 
         // Extract images from the PDF and save them in the created folder
-        $this->extractImagesWithImageMagick($pdfFile, $pdfOutputDir);
+        $imageCounter = $this->extractImagesWithImageMagick($pdfFile, $pdfOutputDir, $pdfName, $imageCounter);
 
         $processed++;
         $percentage = round(($processed / $totalFiles) * 100);
@@ -1220,17 +1228,128 @@ public function extract_images_from_pdfs() {
     flush();
 }
 
-private function extractImagesWithImageMagick($pdfFile, $outputDir) {
-    // Command to extract images from each PDF page using ImageMagick's `magick` tool
-    // Each page is saved as a separate image in the specified directory
-    $command = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick" convert -density 300 ' . escapeshellarg($pdfFile) . ' ' . escapeshellarg($outputDir . '/image-%03d.jpg');
+private function extractImagesWithImageMagick($pdfFile, $outputDir, $pdfName, $startNumber) {
+    $pageNumber = 0; // Start numbering pages from 0
 
-    exec($command, $output, $returnVar);
+    // Use `identify` to count the number of pages in the PDF
+    $identifyCommand = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick" identify -format "%n\n" ' . escapeshellarg($pdfFile);
+    exec($identifyCommand, $output, $returnVar);
+
     if ($returnVar !== 0) {
-        echo "Error extracting images: " . implode("\n", $output);
+        echo "Error identifying PDF pages: " . implode("\n", $output);
+        return $startNumber;
     }
+
+    $totalPages = count($output); // Total number of pages in the PDF
+
+    for ($page = 0; $page < $totalPages; $page++) {
+        // Increment image counter for each page
+        $imageNumber = $startNumber + $page;
+        $outputFileName = $outputDir . '/' . $pdfName . '_' . str_pad($imageNumber, 4, '0', STR_PAD_LEFT) . '.jpg';
+
+        // Extract the specific page as an image
+        $command = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick" convert -density 300 ' . escapeshellarg($pdfFile . '[' . $page . ']') . ' ' . escapeshellarg($outputFileName);
+        exec($command, $cmdOutput, $cmdReturnVar);
+
+        if ($cmdReturnVar !== 0) {
+            echo "Error extracting image from page $page of $pdfFile: " . implode("\n", $cmdOutput);
+        }
+    }
+
+    // Return updated counter after processing all pages in this PDF
+    return $startNumber + $totalPages;
 }
 
+
+
+// public function extract_images_from_pdfs() {
+//     $mainFolder = $this->input->post('directory');
+//     $outputFolder = $this->input->post('outputFolder');
+
+//     if (!is_dir($mainFolder)) {
+//         echo json_encode(['status' => 'error', 'message' => 'Invalid directory']);
+//         return;
+//     }
+
+//     $pdfFiles = glob($mainFolder . '/*.pdf');
+//     if (count($pdfFiles) < 1) {
+//         echo json_encode(['status' => 'error', 'message' => 'No PDF files found in the specified directory']);
+//         return;
+//     }
+
+//     $processed = 0;
+//     $totalFiles = count($pdfFiles);
+
+//     // Send initial response
+//     header('Content-Type: application/json');
+//     if (ob_get_level() === 0) {
+//         ob_start();
+//     }
+//     echo json_encode(['status' => 'processing', 'progress' => 10]) . "\n";
+//     ob_flush();
+//     flush();
+
+//     $count=1;
+
+//     foreach ($pdfFiles as $pdfFile) {
+//         $pdfName = pathinfo($pdfFile, PATHINFO_FILENAME);
+//         // $pdfOutputDir = $outputFolder . '/' . $pdfName;
+//         $pdfOutputDir = $outputFolder ;
+
+
+//         // Create a folder named after the PDF file
+//         if (!is_dir($pdfOutputDir)) {
+//             mkdir($pdfOutputDir, 0755, true);
+//         }
+
+//         // Extract images from the PDF and save them in the created folder
+//         $this->extractImagesWithImageMagick($pdfFile, $pdfOutputDir, $pdfName);
+
+//         $processed++;
+//         $count++;
+//         $percentage = round(($processed / $totalFiles) * 100);
+//         echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
+//         if (ob_get_level() > 0) {
+//             ob_flush();
+//         }
+//         flush();
+//     }
+
+//     // Send final completion message
+//     echo json_encode(['status' => 'completed']) . "\n";
+//     if (ob_get_level() > 0) {
+//         ob_flush();
+//     }
+//     flush();
+// }
+
+
+
+// private function extractImagesWithImageMagick($pdfFile, $outputDir, $pdfName) {
+//     // Reset numbering for each PDF using the `%d` placeholder
+//     // This ensures numbering starts from 0 for each new PDF
+//     $command = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick" convert -density 300 ' . escapeshellarg($pdfFile) . ' ' . escapeshellarg($outputDir . '/' . $pdfName . '_%04d.jpg');
+
+//     exec($command, $output, $returnVar);
+
+//     if ($returnVar !== 0) {
+//         echo "Error extracting images: " . implode("\n", $output);
+//     }
+// }
+
+
+// private function extractImagesWithImageMagick($pdfFile, $outputDir, $pdfName) {
+//     // Command to extract images from each PDF page using ImageMagick's `magick` tool
+//     // Each page is saved as a separate image in the specified directory
+//     $command = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick" convert -density 300 ' . escapeshellarg($pdfFile) . ' ' . escapeshellarg($outputDir . '/'.$pdfName.'_%04d.jpg');
+
+//     // print_r($command);die;
+
+//     exec($command, $output, $returnVar);
+//     if ($returnVar !== 0) {
+//         echo "Error extracting images: " . implode("\n", $output);
+//     }
+// }
 
    
 }

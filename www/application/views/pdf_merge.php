@@ -89,6 +89,11 @@
                     <option value="one_below_other">One Below Other</option>
                 </select>
             </div>
+
+            <div class="mb-3">
+                <label for="pageOrientation" class="form-label">Images Custom Name</label>
+                <input class="form-control" id="custom_name" name="custom_name" type="text"/>
+            </div>
             
             <!-- <button type="submit" class="btn btn-windows" data-bs-toggle="modal" data-bs-target="#progressModal">Merge PDFs</button> -->
             <button type="submit" class="btn btn-windows mt-2" name="action" data-toggle="modal" data-target="#progressModal" value="button1">Merge PDF's</button>
