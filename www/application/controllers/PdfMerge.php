@@ -671,6 +671,8 @@ class PdfMerge extends CI_Controller {
         // Update DPI using ImageMagick command
         $newDpi = 300;
         $command = `magick "$tmp_image_path" -units PixelsPerInch -density {$newDpi}x{$newDpi} "$outputFile"`;
+
+
         exec($command, $output, $return_var);
     
         unlink($tmp_image_path);
@@ -1194,7 +1196,7 @@ public function extract_images_from_pdfs() {
     echo json_encode(['status' => 'processing', 'progress' => 10]) . "\n";
     ob_flush();
     flush();
-
+    $folderPath = "";
     foreach ($pdfFiles as $pdfFile) {
         $pdfName = pathinfo($pdfFile, PATHINFO_FILENAME);
 
@@ -1207,7 +1209,7 @@ public function extract_images_from_pdfs() {
         if (!is_dir($pdfOutputDir)) {
             mkdir($pdfOutputDir, 0755, true);
         }
-
+        $folderPath = $pdfOutputDir;
         // Extract images from the PDF and save them in the created folder
         $imageCounter = $this->extractImagesWithImageMagick($pdfFile, $pdfOutputDir, $pdfName, $imageCounter);
 
@@ -1219,6 +1221,46 @@ public function extract_images_from_pdfs() {
         }
         flush();
     }
+    $pdfOutputDir = $outputFolder."/merged_jpgs";
+
+    // Create a folder for output if it doesn't exist
+    if (!is_dir($pdfOutputDir)) {
+        mkdir($pdfOutputDir, 0755, true);
+    }
+        $imageFiles = glob($folderPath . '/*.{jpg,jpeg}', GLOB_BRACE);
+        $totalFiles = count($imageFiles);
+        $processed = 0;
+        $files_count = 1;
+        for ($i = 0; $i < $totalFiles; $i += 2) {
+            $image1 = $imageFiles[$i];
+            $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
+    
+            // $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
+            $outputFile = $pdfOutputDir . '/' .$files_count . '.jpg';
+
+            
+            $imageDir = sys_get_temp_dir() . '/' . uniqid('image_');
+            mkdir($imageDir, 0755, true);
+
+            $tmp_image_path = $imageDir. '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
+            // print_r($tmp_image_path);die;
+            $space = 10;
+            $mergeOption = "side_by_side";
+            if ($mergeOption === "side_by_side") {
+                $this->mergeSideBySideImages($image1, $image2, $outputFile, $space, $tmp_image_path);
+            } else {
+                $this->mergeOneBelowOtherImages($image1, $image2, $outputFile, $space);
+            }
+
+            $percentage = round(($processed / $totalFiles) * 100);
+            $processed++;
+            $files_count++;
+            echo json_encode(['status' => 'processing', 'progress' => $percentage]) . "\n";
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
+        }
 
     // Send final completion message
     echo json_encode(['status' => 'completed']) . "\n";
