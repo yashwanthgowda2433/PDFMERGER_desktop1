@@ -1228,15 +1228,36 @@ public function extract_images_from_pdfs() {
         mkdir($pdfOutputDir, 0755, true);
     }
         $imageFiles = glob($folderPath . '/*.{jpg,jpeg}', GLOB_BRACE);
+        // usort($imageFiles, function($a, $b) {
+        //     // Extract numbers from filenames
+        //     preg_match('/\d+/', basename($a), $matchesA);
+        //     preg_match('/\d+/', basename($b), $matchesB);
+        
+        //     // Use the numbers for sorting, defaulting to 0 if no number found
+        //     $numA = isset($matchesA[0]) ? (int)$matchesA[0] : 0;
+        //     $numB = isset($matchesB[0]) ? (int)$matchesB[0] : 0;
+        
+        //     return $numA <=> $numB;
+        // });
+
+        // Sort images in natural order (ascending)
+        usort($images, 'strnatcmp');
+
         $totalFiles = count($imageFiles);
         $processed = 0;
         $files_count = 1;
         for ($i = 0; $i < $totalFiles; $i += 2) {
             $image1 = $imageFiles[$i];
+            $image1_name = explode("_", basename($image1));
+            $image1_name = sizeof($image1_name)>0?str_replace(".jpg", "",$image1_name[sizeof($image1_name)-1]):'';
             $image2 = ($i + 1 < $totalFiles) ? $imageFiles[$i + 1] : null;
+            $image2_name = $image2?explode("_", basename($image2)):'';
+            $image2_name = sizeof($image2_name)>0?str_replace(".jpg", "",$image2_name[sizeof($image2_name)-1]):'';
+
+
     
             // $outputFile = $outputDir . '/' . basename($image1, '.jpg') .'_'. basename($image2, '.jpg') . '.jpg';
-            $outputFile = $pdfOutputDir . '/' .$files_count . '.jpg';
+            $outputFile = $pdfOutputDir . '/' .$image1_name.'_' .$image2_name.'.jpg';
 
             
             $imageDir = sys_get_temp_dir() . '/' . uniqid('image_');
