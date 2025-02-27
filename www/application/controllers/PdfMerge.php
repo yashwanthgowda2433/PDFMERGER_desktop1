@@ -1045,6 +1045,7 @@ class PdfMerge extends CI_Controller
             echo json_encode(['status' => 'error', 'message' => 'No PDF files found in the specified directory']);
             return;
         }
+        usort($pdfFiles, 'strnatcmp');
 
         $processed = 0;
         $totalFiles = count($pdfFiles);
@@ -1103,7 +1104,7 @@ class PdfMerge extends CI_Controller
         // });
 
         // Sort images in natural order (ascending)
-        usort($images, 'strnatcmp');
+        usort($imageFiles, 'strnatcmp');
 
         $totalFiles = count($imageFiles);
         $processed = 0;
