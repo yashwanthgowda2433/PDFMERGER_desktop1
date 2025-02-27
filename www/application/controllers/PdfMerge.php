@@ -1028,7 +1028,6 @@ class PdfMerge extends CI_Controller
     }
 
     // pdf to images
-
     public function extract_images_from_pdfs()
     {
         $mainFolder = $this->input->post('directory');
@@ -1187,7 +1186,106 @@ class PdfMerge extends CI_Controller
         return $startNumber + $totalPages;
     }
 
+    // Function to convert images and PDFs to black and white
+    private function convertToBlackAndWhite($directory, $outputDirectory)
+    {
+        // Check if the directory exists
+        if (!is_dir($directory)) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid directory']);
+            return;
+        }
 
+        // Define ImageMagick path
+        $magickPath = '"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick"';
+
+        // Recursively scan the directory
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory));
+
+        // Create output directory if it doesn't exist
+        if (!is_dir($outputDirectory)) {
+            mkdir($outputDirectory, 0755, true);
+        }
+
+        $processedFiles = 0;
+        $totalFiles = 0;
+
+        // Count total files to process
+        foreach ($iterator as $file) {
+            if ($file->isFile() && in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'pdf'])) {
+                $totalFiles++;
+            }
+        }
+
+        // Process files
+        foreach ($iterator as $file) {
+            // Skip directories
+            if ($file->isDir()) {
+                continue;
+            }
+
+            $filePath = $file->getPathname();
+            $fileExtension = strtolower($file->getExtension());
+
+            // Process only JPG, PNG, and PDF files
+            if (in_array($fileExtension, ['jpg', 'jpeg', 'png', 'pdf'])) {
+                $outputFilePath = $outputDirectory . DIRECTORY_SEPARATOR . 'bw_' . $file->getFilename();
+
+                // Convert to black and white
+                if ($fileExtension === 'pdf') {
+                    // Convert PDF pages to black and white
+                    $command = $magickPath . ' ' . escapeshellarg($filePath) . ' -colorspace Gray -threshold 50% ' . escapeshellarg($outputFilePath);
+                } else {
+                    // Convert JPG/PNG to black and white
+                    $command = $magickPath . ' ' . escapeshellarg($filePath) . ' -colorspace Gray -threshold 50% ' . escapeshellarg($outputFilePath);
+                }
+
+                // Execute the command
+                exec($command, $output, $returnVar);
+
+                if ($returnVar === 0) {
+                    $processedFiles++;
+                    echo json_encode([
+                        'status' => 'processing',
+                        'progress' => round(($processedFiles / $totalFiles) * 100),
+                        'message' => 'Processed: ' . $filePath
+                    ]) . "\n";
+                    ob_flush();
+                    flush();
+                } else {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Failed to process: ' . $filePath
+                    ]) . "\n";
+                    ob_flush();
+                    flush();
+                }
+            }
+        }
+
+        // Send final completion message
+        echo json_encode([
+            'status' => 'completed',
+            'message' => 'All files processed successfully!'
+        ]) . "\n";
+        ob_flush();
+        flush();
+    }
+
+    public function submitBlackWhite()
+    {
+        // Example usage
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $directory = $this->input->post('directory'); // Input directory from user
+            $outputDirectory = $this->input->post('outputFolder'); // Output directory for black and white files
+            
+            // Start processing
+            header('Content-Type: application/json');
+            if (ob_get_level() === 0) {
+                ob_start();
+            }
+            $this->convertToBlackAndWhite($directory, $outputDirectory);
+        }
+    }
 }
 
 ?>
