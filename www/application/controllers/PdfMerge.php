@@ -1187,8 +1187,8 @@ class PdfMerge extends CI_Controller
         return $startNumber + $totalPages;
     }
 
-    // Function to convert images and PDFs to black and white
-    private function convertToBlackAndWhite($directory, $outputDirectory)
+    // Function to convert images and PDFs to black and white with brightness, contrast, and gamma adjustments
+    private function convertToBlackAndWhite($directory, $outputDirectory, $brightness = 0, $contrast = 0, $gamma = 1.0)
     {
         // Check if the directory exists
         if (!is_dir($directory)) {
@@ -1231,13 +1231,13 @@ class PdfMerge extends CI_Controller
             if (in_array($fileExtension, ['jpg', 'jpeg', 'png', 'pdf'])) {
                 $outputFilePath = $outputDirectory . DIRECTORY_SEPARATOR . 'bw_' . $file->getFilename();
 
-                // Convert to black and white
+                // Convert to black and white with brightness, contrast, and gamma adjustments
                 if ($fileExtension === 'pdf') {
                     // Convert PDF pages to black and white
-                    $command = $magickPath . ' ' . escapeshellarg($filePath) . ' -colorspace Gray -threshold 50% ' . escapeshellarg($outputFilePath);
+                    $command = $magickPath . ' ' . escapeshellarg($filePath) . ' -colorspace Gray -brightness-contrast ' . escapeshellarg("$brightness"."x"."$contrast") . ' -gamma ' . escapeshellarg($gamma) . ' -threshold 50% ' . escapeshellarg($outputFilePath);
                 } else {
                     // Convert JPG/PNG to black and white
-                    $command = $magickPath . ' ' . escapeshellarg($filePath) . ' -colorspace Gray -threshold 50% ' . escapeshellarg($outputFilePath);
+                    $command = $magickPath . ' ' . escapeshellarg($filePath) . ' -colorspace Gray -brightness-contrast ' . escapeshellarg("$brightness"."x"."$contrast") . ' -gamma ' . escapeshellarg($gamma) . ' -threshold 50% ' . escapeshellarg($outputFilePath);
                 }
 
                 // Execute the command
@@ -1278,13 +1278,16 @@ class PdfMerge extends CI_Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $directory = $this->input->post('directory'); // Input directory from user
             $outputDirectory = $this->input->post('outputFolder'); // Output directory for black and white files
-            
+            $brightness = (int)$this->input->post('brightness'); // Brightness adjustment
+            $contrast = (int)$this->input->post('contrast'); // Contrast adjustment
+            $gamma = (float)$this->input->post('gamma'); // Gamma adjustment
+
             // Start processing
             header('Content-Type: application/json');
             if (ob_get_level() === 0) {
                 ob_start();
             }
-            $this->convertToBlackAndWhite($directory, $outputDirectory);
+            $this->convertToBlackAndWhite($directory, $outputDirectory, $brightness, $contrast, $gamma);
         }
     }
 }
